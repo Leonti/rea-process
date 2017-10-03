@@ -1,0 +1,45 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module DbStore(
+uniqueOnSaleLinks,
+onSaleForLink,
+copyField,
+upsertOnSaleProcessed) where
+
+import           Database.MongoDB          ((=:))
+import qualified Database.MongoDB          as Mongo
+import           Data.Text                 (pack, unpack)
+
+import           System.Environment (getEnv)
+
+actionToIO :: Mongo.Action IO a -> IO a
+actionToIO action = do
+    pipe <- authenticatedMongoPipe
+    mongoDb <- getEnv "MONGO_DB"
+    Mongo.access pipe Mongo.UnconfirmedWrites (pack mongoDb) action
+
+authenticatedMongoPipe :: IO Mongo.Pipe
+authenticatedMongoPipe = do
+    mongoHostPort <- getEnv "MONGO_HOST_PORT"
+    mongoDb <- getEnv "MONGO_DB"
+    mongoUsername <- getEnv "MONGO_USERNAME"
+    mongoPassword <- getEnv "MONGO_PASSWORD"
+    pipe <- Mongo.connect (Mongo.readHostPort mongoHostPort)
+    _ <- Mongo.access pipe Mongo.UnconfirmedWrites (pack mongoDb) $ Mongo.auth (pack mongoUsername) (pack mongoPassword)
+    return pipe
+
+copyField :: Mongo.Document -> Mongo.Label -> Mongo.Field
+copyField doc label = label =: Mongo.valueAt label doc
+
+uniqueOnSaleLinks :: IO [Mongo.Value]
+uniqueOnSaleLinks = actionToIO $ Mongo.distinct "link" (Mongo.select [] "properties")
+
+onSaleForLink :: Mongo.Value -> IO [Mongo.Document]
+onSaleForLink link = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
+    [ "link" =: link ] "properties")
+
+upsertOnSaleProcessed :: Mongo.Document -> IO ()
+upsertOnSaleProcessed processed = actionToIO $
+  Mongo.upsert (Mongo.select existingSelector "processedOnSaleProperties") processed
+  where
+    existingSelector = [copyField processed "link"]

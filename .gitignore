@@ -1,3 +1,7 @@
 .stack-work/
 .DS_Store
 config.sh
+rea-process.aux
+rea-process.hp
+rea-process.prof
+rea-process.ps
