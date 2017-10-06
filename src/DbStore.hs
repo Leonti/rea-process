@@ -4,7 +4,9 @@ module DbStore(
 uniqueOnSaleLinks,
 onSaleForLink,
 copyField,
-upsertOnSaleProcessed) where
+upsertOnSaleProcessed,
+extractField
+) where
 
 import           Database.MongoDB          ((=:))
 import qualified Database.MongoDB          as Mongo
@@ -37,6 +39,14 @@ uniqueOnSaleLinks = actionToIO $ Mongo.distinct "link" (Mongo.select [] "propert
 onSaleForLink :: Mongo.Value -> IO [Mongo.Document]
 onSaleForLink link = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
     [ "link" =: link ] "properties")
+
+
+extractField :: String -> Mongo.Document -> String
+extractField label doc = fieldToString $ Mongo.valueAt (pack label) doc
+
+fieldToString :: Mongo.Value -> String
+fieldToString (Mongo.String s) = unpack s
+fieldToString _            = error "Value is not a string"
 
 upsertOnSaleProcessed :: Mongo.Document -> IO ()
 upsertOnSaleProcessed processed = actionToIO $
