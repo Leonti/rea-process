@@ -5,7 +5,9 @@ uniqueOnSaleLinks,
 onSaleForLink,
 copyField,
 upsertOnSaleProcessed,
-extractField
+extractField,
+findSoldById,
+fieldToString
 ) where
 
 import           Database.MongoDB          ((=:))
@@ -40,6 +42,9 @@ onSaleForLink :: Mongo.Value -> IO [Mongo.Document]
 onSaleForLink link = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
     [ "link" =: link ] "properties")
 
+findSoldById :: Mongo.Value -> IO [Mongo.Document]
+findSoldById propertyId = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
+    ["link" =: ["$regex" =: propertyId]] "soldProperties")
 
 extractField :: String -> Mongo.Document -> String
 extractField label doc = fieldToString $ Mongo.valueAt (pack label) doc
