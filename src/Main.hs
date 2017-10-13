@@ -13,7 +13,7 @@ import           Database.MongoDB          ((=:))
 import           Time(toTimestamp)
 import Data.List(sortOn)
 import Parsing(extractId)
-import Geocoding(geocodeAddress)
+import GeocodingCache(geocodeOrGetFromCache)
 
 main :: IO ()
 main = do

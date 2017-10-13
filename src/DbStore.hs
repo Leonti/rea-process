@@ -7,12 +7,14 @@ copyField,
 upsertOnSaleProcessed,
 extractField,
 findSoldById,
-fieldToString
+fieldToString,
+actionToIO
 ) where
 
 import           Database.MongoDB          ((=:))
 import qualified Database.MongoDB          as Mongo
 import           Data.Text                 (pack, unpack)
+import Geocoding(Result(..))
 
 import           System.Environment (getEnv)
 

@@ -1,12 +1,16 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, OverloadedStrings #-}
 
-module Geocoding(geocodeAddress, Result) where
+module Geocoding(geocodeAddress, Result(..)) where
 
 import GHC.Generics(Generic)
 import Data.Aeson(ToJSON, FromJSON, decode)
-import Data.ByteString.Lazy.UTF8(fromString)
+--import Data.ByteString.Lazy.UTF8(fromString)
+import Data.ByteString.Lazy.Internal(ByteString)
 
-import Network.HTTP(urlEncode, getResponseBody, simpleHTTP, getRequest)
+
+import HttpsClient(fetchUrl)
+import Network.HTTP(urlEncode)
+import           System.Environment (getEnv)
 
 data Location = LatLng
   { lat :: Double
@@ -29,26 +33,29 @@ data GeocodingResults = GeocodingResults
   } deriving (Show, Generic, ToJSON, FromJSON)
 
 data Result = Result
-  { loc :: Location
+  { latitude :: Double
+  , longitude :: Double
   , formattedAddress :: String
   } deriving (Show)
 
-decodeGeocodingResponse :: String -> Maybe GeocodingResults
-decodeGeocodingResponse inputResponse = Data.Aeson.decode (fromString inputResponse) :: Maybe GeocodingResults
+decodeGeocodingResponse :: ByteString -> Maybe GeocodingResults
+decodeGeocodingResponse inputResponse = Data.Aeson.decode inputResponse :: Maybe GeocodingResults
 
-openUrl :: String -> IO String
-openUrl x = getResponseBody =<< simpleHTTP (getRequest x)
+--openUrl :: String -> IO String
+--openUrl x = getResponseBody =<< simpleHTTP (getRequest x)
 
-geocodingUrl :: String -> String
-geocodingUrl address = baseUrl ++ encodedAddress
+geocodingUrl :: String -> String -> String
+geocodingUrl address key = baseUrl ++ encodedAddress ++ encodedKey
   where
-    baseUrl = "http://maps.googleapis.com/maps/api/geocode/json?"
+    baseUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
     encodedAddress = "&address=" ++ urlEncode (address ++ ", Australia")
+    encodedKey = "&key=" ++ key
 
 extractResult :: GeocodingResults -> Maybe Result
 extractResult response = case status response of
   "OK" -> Just Result
-    { loc = l
+    { latitude = lat l
+    , longitude = lng l
     , formattedAddress = fa
     }
     where
@@ -58,9 +65,9 @@ extractResult response = case status response of
 
 geocodeAddress :: String -> IO (Maybe Result)
 geocodeAddress address = do
-  geocodingResponse <- openUrl $ geocodingUrl address
+  geocodingKey <- getEnv "GEOCODING_KEY"
+  geocodingResponse <- fetchUrl $ geocodingUrl address geocodingKey
   let parsedResults = decodeGeocodingResponse geocodingResponse
   let maybeResult = parsedResults >>= extractResult
   _ <- print $ show parsedResults
-  _ <- print $ show maybeResult
   return maybeResult
