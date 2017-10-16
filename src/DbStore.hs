@@ -15,7 +15,6 @@ import           Database.MongoDB          ((=:))
 import qualified Database.MongoDB          as Mongo
 import           Data.Text                 (pack, unpack)
 import Geocoding(Result(..))
-
 import           System.Environment (getEnv)
 
 actionToIO :: Mongo.Action IO a -> IO a
