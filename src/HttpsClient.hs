@@ -10,6 +10,7 @@ import qualified Network.TLS             as TLS
 import qualified Network.TLS.Extra       as TLS (ciphersuite_all)
 import qualified System.X509             as TLS
 
+import           Control.Exception          (try)
 import Data.Default.Class (def)
 import Data.Maybe
 import Network.HTTP.Client
@@ -19,12 +20,16 @@ import Prelude
 
 import Data.ByteString.Lazy.Internal(ByteString)
 
-fetchUrl :: String -> IO ByteString
+fetchUrl :: String -> IO (Maybe ByteString)
 fetchUrl url = do
   let req = fromJust $ parseUrl url
   mgr <- mkHttpManager True
-  res <- httpLbs req mgr
-  return $ responseBody res
+  eres <- try $ httpLbs req mgr
+  case eres of
+    Left e -> do
+      _ <- print (e :: HttpException)
+      return Nothing
+    Right res -> return $ Just (responseBody res)
 
 -- | Create an HTTP 'Manager' for running a 'Test'
 mkHttpManager :: Bool  -- ^ validate ssl

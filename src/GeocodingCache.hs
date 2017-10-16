@@ -4,19 +4,21 @@ module GeocodingCache where
 
 import           Database.MongoDB          ((=:))
 import qualified Database.MongoDB          as Mongo
+import Data.Char(isAscii)
 import Geocoding(geocodeAddress, Result(..))
 import DbStore(actionToIO, copyField)
 
-geocodeOrGetFromCache :: String -> IO ()
+geocodeOrGetFromCache :: String -> IO (Maybe Mongo.Document)
 geocodeOrGetFromCache location = do
   existingResult <- geocodedForAddress location
   maybeResult <- extractOrFetch location existingResult
-  print $ show maybeResult
+  _ <- print $ show maybeResult
+  return maybeResult
 
 extractOrFetch :: String -> [Mongo.Document] -> IO (Maybe Mongo.Document)
 extractOrFetch location (x:xs) = return $ Just x
 extractOrFetch location [] = do
-  maybeResult <- geocodeAddress location
+  maybeResult <- geocodeAddress (filter isAscii location)
   case maybeResult of
     (Just result) -> do
       _ <- upsertGeocodingResult resultDoc

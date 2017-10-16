@@ -45,11 +45,12 @@ decodeGeocodingResponse inputResponse = Data.Aeson.decode inputResponse :: Maybe
 --openUrl x = getResponseBody =<< simpleHTTP (getRequest x)
 
 geocodingUrl :: String -> String -> String
-geocodingUrl address key = baseUrl ++ encodedAddress ++ encodedKey
+geocodingUrl address key = baseUrl ++ encodedAddress ++ encodedKey-- ++ encodedBounds
   where
     baseUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
     encodedAddress = "&address=" ++ urlEncode (address ++ ", Australia")
     encodedKey = "&key=" ++ key
+--    encodedBounds = "&bounds=" ++ "-37.8555269395,144.95143536|-37.799716676,144.990094688"
 
 extractResult :: GeocodingResults -> Maybe Result
 extractResult response = case status response of
@@ -67,7 +68,7 @@ geocodeAddress :: String -> IO (Maybe Result)
 geocodeAddress address = do
   geocodingKey <- getEnv "GEOCODING_KEY"
   geocodingResponse <- fetchUrl $ geocodingUrl address geocodingKey
-  let parsedResults = decodeGeocodingResponse geocodingResponse
+  let parsedResults = geocodingResponse >>= decodeGeocodingResponse 
   let maybeResult = parsedResults >>= extractResult
   _ <- print $ show parsedResults
   return maybeResult

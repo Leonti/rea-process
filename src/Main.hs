@@ -26,8 +26,9 @@ processLink link = do
   onSale <- onSaleForLink link
   let propertyId = extractId $ fieldToString link
   soldById <- findSoldById (Mongo.val propertyId)
-  let onSaleProcessed = toOnSaleProcessedDoc onSale (not (null soldById))
-  _ <- upsertOnSaleProcessed $ toOnSaleProcessedDoc onSale (not (null soldById))
+  maybeGeocoding <- geocodeOrGetFromCache (extractAddress onSale)
+  let onSaleProcessed = toOnSaleProcessedDoc onSale (not (null soldById)) maybeGeocoding
+  _ <- upsertOnSaleProcessed onSaleProcessed
   putStrLn $ "processing link" ++ show link
 
 toDatePrice :: Mongo.Document -> Mongo.Document
@@ -40,18 +41,25 @@ toDatePrice doc =
 --toLocalTime :: String -> Maybe LocalTime
 --toLocalTime dateAsString = fst <$> strptime "%Y-%m-%d %H:%M" (dateAsString ++ " 22:30")
 
-toOnSaleProcessedDoc :: [Mongo.Document] -> Bool -> Mongo.Document
-toOnSaleProcessedDoc onSaleList isSold =
-  [ copy "link"
-  , copy "extractedDate"
-  , copy "bedrooms"
-  , copy "bathrooms"
-  , copy "cars"
-  , copy "location"
-  , "datesPrices" =: datesPrices
-  , "isSold" =: isSold
-  ]
+extractAddress :: [Mongo.Document] -> String
+extractAddress onSaleList = extractField "location" $ last sortedOnSale
+  where
+    sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
+
+toOnSaleProcessedDoc :: [Mongo.Document] -> Bool -> Maybe Mongo.Document -> Mongo.Document
+toOnSaleProcessedDoc onSaleList isSold maybeGeocoding = doc
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
     copy = copyField $ last sortedOnSale
     datesPrices = fmap toDatePrice sortedOnSale
+    doc =
+      [ copy "link"
+      , copy "extractedDate"
+      , copy "bedrooms"
+      , copy "bathrooms"
+      , copy "cars"
+      , copy "location"
+      , "datesPrices" =: datesPrices
+      , "isSold" =: isSold
+      ]
+--    geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
