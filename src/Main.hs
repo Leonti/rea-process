@@ -47,7 +47,7 @@ extractAddress onSaleList = extractField "location" $ last sortedOnSale
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
 
 toOnSaleProcessedDoc :: [Mongo.Document] -> Bool -> Maybe Mongo.Document -> Mongo.Document
-toOnSaleProcessedDoc onSaleList isSold maybeGeocoding = doc
+toOnSaleProcessedDoc onSaleList isSold maybeGeocoding = Mongo.merge doc geocodingDoc
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
     copy = copyField $ last sortedOnSale
@@ -62,4 +62,4 @@ toOnSaleProcessedDoc onSaleList isSold maybeGeocoding = doc
       , "datesPrices" =: datesPrices
       , "isSold" =: isSold
       ]
---    geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
+    geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
