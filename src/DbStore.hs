@@ -5,10 +5,13 @@ uniqueOnSaleLinks,
 onSaleForLink,
 copyField,
 upsertOnSaleProcessed,
+upsertSoldProcessed,
 extractField,
+extractDoubleField,
 findSoldById,
 fieldToString,
-actionToIO
+actionToIO,
+allSoldProperties
 ) where
 
 import           Database.MongoDB          ((=:))
@@ -16,6 +19,7 @@ import qualified Database.MongoDB          as Mongo
 import           Data.Text                 (pack, unpack)
 import Geocoding(Result(..))
 import           System.Environment (getEnv)
+import Data.Maybe(fromJust)
 
 actionToIO :: Mongo.Action IO a -> IO a
 actionToIO action = do
@@ -33,6 +37,9 @@ authenticatedMongoPipe = do
     _ <- Mongo.access pipe Mongo.UnconfirmedWrites (pack mongoDb) $ Mongo.auth (pack mongoUsername) (pack mongoPassword)
     return pipe
 
+allSoldProperties :: IO [Mongo.Document]
+allSoldProperties = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select [] "soldProperties")
+
 copyField :: Mongo.Document -> Mongo.Label -> Mongo.Field
 copyField doc label = label =: Mongo.valueAt label doc
 
@@ -47,6 +54,12 @@ findSoldById :: Mongo.Value -> IO [Mongo.Document]
 findSoldById propertyId = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
     ["link" =: ["$regex" =: propertyId]] "soldProperties")
 
+extractDoubleField :: String -> Mongo.Document -> Double
+extractDoubleField label doc = fieldToDouble $ Mongo.valueAt (pack label) doc
+
+fieldToDouble :: Mongo.Value -> Double
+fieldToDouble number = fromJust (Mongo.cast number :: Maybe Double)
+
 extractField :: String -> Mongo.Document -> String
 extractField label doc = fieldToString $ Mongo.valueAt (pack label) doc
 
@@ -54,8 +67,14 @@ fieldToString :: Mongo.Value -> String
 fieldToString (Mongo.String s) = unpack s
 fieldToString _            = error "Value is not a string"
 
-upsertOnSaleProcessed :: Mongo.Document -> IO ()
-upsertOnSaleProcessed processed = actionToIO $
-  Mongo.upsert (Mongo.select existingSelector "processedOnSaleProperties") processed
+upsertProcessed :: String -> Mongo.Document -> IO ()
+upsertProcessed collection processed = actionToIO $
+  Mongo.upsert (Mongo.select existingSelector (pack collection)) processed
   where
     existingSelector = [copyField processed "link"]
+
+upsertOnSaleProcessed :: Mongo.Document -> IO ()
+upsertOnSaleProcessed = upsertProcessed "processedOnSaleProperties"
+
+upsertSoldProcessed :: Mongo.Document -> IO ()
+upsertSoldProcessed = upsertProcessed "processedSoldProperties"

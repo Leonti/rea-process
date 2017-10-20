@@ -33,3 +33,5 @@ executable rea-process
                         , data-default-class
                         , x509-system == 1.6.3
                         , streaming == 0.1.4.3
+                        , gps == 1.2
+                        , split == 0.1.2.3

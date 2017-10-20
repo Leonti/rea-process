@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, OverloadedStrings #-}
 
-module Geocoding(geocodeAddress, Result(..)) where
+module Geocoding(geocodeAddress, Result(..), Location(..)) where
 
 import GHC.Generics(Generic)
 import Data.Aeson(ToJSON, FromJSON, decode)
@@ -68,7 +68,7 @@ geocodeAddress :: String -> IO (Maybe Result)
 geocodeAddress address = do
   geocodingKey <- getEnv "GEOCODING_KEY"
   geocodingResponse <- fetchUrl $ geocodingUrl address geocodingKey
-  let parsedResults = geocodingResponse >>= decodeGeocodingResponse 
+  let parsedResults = geocodingResponse >>= decodeGeocodingResponse
   let maybeResult = parsedResults >>= extractResult
   _ <- print $ show parsedResults
   return maybeResult
