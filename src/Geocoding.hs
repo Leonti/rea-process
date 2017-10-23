@@ -4,10 +4,7 @@ module Geocoding(geocodeAddress, Result(..), Location(..)) where
 
 import GHC.Generics(Generic)
 import Data.Aeson(ToJSON, FromJSON, decode)
---import Data.ByteString.Lazy.UTF8(fromString)
 import Data.ByteString.Lazy.Internal(ByteString)
-
-
 import HttpsClient(fetchUrl)
 import Network.HTTP(urlEncode)
 import           System.Environment (getEnv)

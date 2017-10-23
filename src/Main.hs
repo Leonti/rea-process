@@ -25,7 +25,7 @@ main = do
   stops <- readStops
   stores <- readStores
   links <- uniqueOnSaleLinks
---  _ <- mapM (processLink stops stores) links
+  _ <- mapM (processLink stops stores) links
   soldProperties <- allSoldProperties
   _ <- mapM (processSoldProperty stops stores) soldProperties
   putStrLn $ "Links count " ++ show (length links)
@@ -40,9 +40,9 @@ processSoldProperty stops stores soldProperty = do
 
 updateSoldProperty :: Mongo.Document -> Maybe Mongo.Document -> Maybe Mongo.Document -> Mongo.Document
 updateSoldProperty soldProperty maybeGeocoding maybeDistances =
-  Mongo.merge soldProperty (Mongo.merge geocodingDoc distancesDoc)
+  Mongo.merge soldProperty (Mongo.merge (Mongo.merge geocodingDoc distancesDoc) timestampDoc)
   where
-    timeStapmpDoc = ["timestamp" =: toTimestamp (extractField "soldAt" soldProperty)]
+    timestampDoc = ["timestamp" =: toTimestamp (extractField "soldAt" soldProperty)]
     geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
     distancesDoc = maybe [] (\d -> [ "distances" =: d ]) maybeDistances
 
