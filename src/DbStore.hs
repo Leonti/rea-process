@@ -8,6 +8,7 @@ upsertOnSaleProcessed,
 upsertSoldProcessed,
 extractField,
 extractDoubleField,
+extractIntegerField,
 findSoldById,
 fieldToString,
 actionToIO,
@@ -53,6 +54,12 @@ onSaleForLink link = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
 findSoldById :: Mongo.Value -> IO [Mongo.Document]
 findSoldById propertyId = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
     ["link" =: ["$regex" =: propertyId]] "soldProperties")
+
+extractIntegerField :: String -> Mongo.Document -> Integer
+extractIntegerField label doc = fieldToInteger $ Mongo.valueAt (pack label) doc
+
+fieldToInteger :: Mongo.Value -> Integer
+fieldToInteger number = fromJust (Mongo.cast number :: Maybe Integer)
 
 extractDoubleField :: String -> Mongo.Document -> Double
 extractDoubleField label doc = fieldToDouble $ Mongo.valueAt (pack label) doc

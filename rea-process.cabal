@@ -35,3 +35,4 @@ executable rea-process
                         , streaming == 0.1.4.3
                         , gps == 1.2
                         , split == 0.1.2.3
+                        , safe == 0.3.15

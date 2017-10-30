@@ -7,10 +7,13 @@ import DbStore(
   upsertSoldProcessed,
   extractField,
   extractDoubleField,
+  extractIntegerField,
   findSoldById,
   fieldToString,
   allSoldProperties)
 
+
+import Safe(headMay)
 import qualified Database.MongoDB          as Mongo
 import           Database.MongoDB          ((=:))
 import           Time(toTimestamp)
@@ -53,7 +56,7 @@ processLink stops stores link = do
   soldById <- findSoldById (Mongo.val propertyId)
   maybeGeocoding <- geocodeOrGetFromCache (extractAddress onSale)
   let maybeDistances = fmap (geocodingToDistances stops stores) maybeGeocoding
-  let onSaleProcessed = toOnSaleProcessedDoc onSale (not (null soldById)) maybeGeocoding maybeDistances
+  let onSaleProcessed = toOnSaleProcessedDoc onSale soldById maybeGeocoding maybeDistances
   _ <- upsertOnSaleProcessed onSaleProcessed
   putStrLn $ "processing link" ++ show link
 
@@ -79,8 +82,8 @@ extractAddress onSaleList = extractField "location" $ last sortedOnSale
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
 
-toOnSaleProcessedDoc :: [Mongo.Document] -> Bool -> Maybe Mongo.Document -> Maybe Mongo.Document -> Mongo.Document
-toOnSaleProcessedDoc onSaleList isSold maybeGeocoding maybeDistances =
+toOnSaleProcessedDoc :: [Mongo.Document] -> [Mongo.Document] -> Maybe Mongo.Document -> Maybe Mongo.Document -> Mongo.Document
+toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
   Mongo.merge doc (Mongo.merge geocodingDoc distancesDoc)
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
@@ -95,9 +98,15 @@ toOnSaleProcessedDoc onSaleList isSold maybeGeocoding maybeDistances =
       , copy "location"
       , "datesPrices" =: datesPrices
       , "isSold" =: isSold
+      , "salePrice" =: maybeSoldPrice
+      , "soldAt" =: maybeSoldTimestamp
       ]
     geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
     distancesDoc = maybe [] (\d -> [ "distances" =: d ]) maybeDistances
+    isSold = not (null soldResult)
+    maybeSold = headMay soldResult
+    maybeSoldTimestamp = fmap (toTimestamp . extractField "soldAt") maybeSold
+    maybeSoldPrice = fmap (extractIntegerField "price") maybeSold
 
 readStops :: IO [Stop]
 readStops = do
