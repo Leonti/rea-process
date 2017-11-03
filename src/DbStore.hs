@@ -12,7 +12,8 @@ extractIntegerField,
 findSoldById,
 fieldToString,
 actionToIO,
-allSoldProperties
+allSoldProperties,
+authenticatedMongoPipe
 ) where
 
 import           Database.MongoDB          ((=:))
@@ -21,10 +22,10 @@ import           Data.Text                 (pack, unpack)
 import Geocoding(Result(..))
 import           System.Environment (getEnv)
 import Data.Maybe(fromJust)
+import Data.Time.Clock.POSIX(getPOSIXTime)
 
-actionToIO :: Mongo.Action IO a -> IO a
-actionToIO action = do
-    pipe <- authenticatedMongoPipe
+actionToIO :: Mongo.Pipe -> Mongo.Action IO a -> IO a
+actionToIO pipe action = do
     mongoDb <- getEnv "MONGO_DB"
     Mongo.access pipe Mongo.UnconfirmedWrites (pack mongoDb) action
 
@@ -38,21 +39,21 @@ authenticatedMongoPipe = do
     _ <- Mongo.access pipe Mongo.UnconfirmedWrites (pack mongoDb) $ Mongo.auth (pack mongoUsername) (pack mongoPassword)
     return pipe
 
-allSoldProperties :: IO [Mongo.Document]
-allSoldProperties = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select [] "soldProperties")
+allSoldProperties :: Mongo.Pipe -> IO [Mongo.Document]
+allSoldProperties pipe = (actionToIO pipe)  $ Mongo.rest =<< Mongo.find (Mongo.select [] "soldProperties")
 
 copyField :: Mongo.Document -> Mongo.Label -> Mongo.Field
 copyField doc label = label =: Mongo.valueAt label doc
 
-uniqueOnSaleLinks :: IO [Mongo.Value]
-uniqueOnSaleLinks = actionToIO $ Mongo.distinct "link" (Mongo.select [] "properties")
+uniqueOnSaleLinks :: Mongo.Pipe -> IO [Mongo.Value]
+uniqueOnSaleLinks pipe = (actionToIO pipe) $ Mongo.distinct "link" (Mongo.select [] "properties")
 
-onSaleForLink :: Mongo.Value -> IO [Mongo.Document]
-onSaleForLink link = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
+onSaleForLink :: Mongo.Pipe -> Mongo.Value -> IO [Mongo.Document]
+onSaleForLink pipe link = (actionToIO pipe) $ Mongo.rest =<< Mongo.find (Mongo.select
     [ "link" =: link ] "properties")
 
-findSoldById :: Mongo.Value -> IO [Mongo.Document]
-findSoldById propertyId = actionToIO $ Mongo.rest =<< Mongo.find (Mongo.select
+findSoldById :: Mongo.Pipe -> Mongo.Value -> IO [Mongo.Document]
+findSoldById pipe propertyId = (actionToIO pipe) $ Mongo.rest =<< Mongo.find (Mongo.select
     ["link" =: ["$regex" =: propertyId]] "soldProperties")
 
 extractIntegerField :: String -> Mongo.Document -> Integer
@@ -74,14 +75,14 @@ fieldToString :: Mongo.Value -> String
 fieldToString (Mongo.String s) = unpack s
 fieldToString _            = error "Value is not a string"
 
-upsertProcessed :: String -> Mongo.Document -> IO ()
-upsertProcessed collection processed = actionToIO $
+upsertProcessed :: Mongo.Pipe -> String -> Mongo.Document -> IO ()
+upsertProcessed pipe collection processed = (actionToIO pipe) $
   Mongo.upsert (Mongo.select existingSelector (pack collection)) processed
   where
     existingSelector = [copyField processed "link"]
 
-upsertOnSaleProcessed :: Mongo.Document -> IO ()
-upsertOnSaleProcessed = upsertProcessed "processedOnSaleProperties"
+upsertOnSaleProcessed :: Mongo.Pipe -> Mongo.Document -> IO ()
+upsertOnSaleProcessed pipe = upsertProcessed pipe "processedOnSaleProperties"
 
-upsertSoldProcessed :: Mongo.Document -> IO ()
-upsertSoldProcessed = upsertProcessed "processedSoldProperties"
+upsertSoldProcessed :: Mongo.Pipe -> Mongo.Document -> IO ()
+upsertSoldProcessed pipe = upsertProcessed pipe "processedSoldProperties"

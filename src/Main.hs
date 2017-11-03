@@ -10,7 +10,8 @@ import DbStore(
   extractIntegerField,
   findSoldById,
   fieldToString,
-  allSoldProperties)
+  allSoldProperties,
+  authenticatedMongoPipe)
 
 
 import Safe(headMay)
@@ -25,20 +26,21 @@ import Distance(fromLocationToDistanceDoc)
 
 main :: IO ()
 main = do
+  pipe <- authenticatedMongoPipe
   stops <- readStops
   stores <- readStores
-  links <- uniqueOnSaleLinks
-  _ <- mapM (processLink stops stores) links
-  soldProperties <- allSoldProperties
-  _ <- mapM (processSoldProperty stops stores) soldProperties
+  links <- uniqueOnSaleLinks pipe
+  _ <- mapM (processLink pipe stops stores) links
+  soldProperties <- allSoldProperties pipe
+  _ <- mapM (processSoldProperty pipe stops stores) soldProperties
   putStrLn $ "Links count " ++ show (length links)
 
-processSoldProperty :: [Stop] -> [Store] -> Mongo.Document -> IO ()
-processSoldProperty stops stores soldProperty = do
-  maybeGeocoding <- geocodeOrGetFromCache (extractField "location" soldProperty)
+processSoldProperty :: Mongo.Pipe -> [Stop] -> [Store] -> Mongo.Document -> IO ()
+processSoldProperty pipe stops stores soldProperty = do
+  maybeGeocoding <- geocodeOrGetFromCache pipe (extractField "location" soldProperty)
   let maybeDistances = fmap (geocodingToDistances stops stores) maybeGeocoding
   let updatedSoldProperty = updateSoldProperty soldProperty maybeGeocoding maybeDistances
-  _ <- upsertSoldProcessed updatedSoldProperty
+  _ <- upsertSoldProcessed pipe updatedSoldProperty
   print ("Processed sold property " ++ extractField "link" soldProperty)
 
 updateSoldProperty :: Mongo.Document -> Maybe Mongo.Document -> Maybe Mongo.Document -> Mongo.Document
@@ -49,15 +51,15 @@ updateSoldProperty soldProperty maybeGeocoding maybeDistances =
     geocodingDoc = maybe [] (\g -> [ "geo" =: g ]) maybeGeocoding
     distancesDoc = maybe [] (\d -> [ "distances" =: d ]) maybeDistances
 
-processLink :: [Stop] -> [Store] -> Mongo.Value -> IO ()
-processLink stops stores link = do
-  onSale <- onSaleForLink link
+processLink :: Mongo.Pipe -> [Stop] -> [Store] -> Mongo.Value -> IO ()
+processLink pipe stops stores link = do
+  onSale <- onSaleForLink pipe link
   let propertyId = extractId $ fieldToString link
-  soldById <- findSoldById (Mongo.val propertyId)
-  maybeGeocoding <- geocodeOrGetFromCache (extractAddress onSale)
+  soldById <- findSoldById pipe (Mongo.val propertyId)
+  maybeGeocoding <- geocodeOrGetFromCache pipe (extractAddress onSale)
   let maybeDistances = fmap (geocodingToDistances stops stores) maybeGeocoding
   let onSaleProcessed = toOnSaleProcessedDoc onSale soldById maybeGeocoding maybeDistances
-  _ <- upsertOnSaleProcessed onSaleProcessed
+  _ <- upsertOnSaleProcessed pipe onSaleProcessed
   putStrLn $ "processing link" ++ show link
 
 geocodingToDistances :: [Stop] -> [Store] -> Mongo.Document -> Mongo.Document
@@ -92,6 +94,7 @@ toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
     doc =
       [ copy "link"
       , copy "extractedDate"
+      , "extractedAt" =: lastExtractedAt
       , copy "bedrooms"
       , copy "bathrooms"
       , copy "cars"
@@ -107,6 +110,7 @@ toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
     maybeSold = headMay soldResult
     maybeSoldTimestamp = fmap (toTimestamp . extractField "soldAt") maybeSold
     maybeSoldPrice = fmap (extractIntegerField "price") maybeSold
+    lastExtractedAt = (toTimestamp . extractField "extractedDate") (last sortedOnSale)
 
 readStops :: IO [Stop]
 readStops = do
