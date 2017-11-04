@@ -16,6 +16,15 @@ executable rea-process
   hs-source-dirs:      src
   main-is:             Main.hs
   default-language:    Haskell2010
+  other-modules:       DbStore
+                       , Distance
+                       , Geocoding
+                       , GeocodingCache
+                       , HttpsClient
+                       , Parsing
+                       , Poi
+                       , Time
+
   build-depends:       base >= 4.7 && < 5
                         , mongoDB == 2.3.0
                         , text == 1.2.2.1
@@ -37,3 +46,4 @@ executable rea-process
                         , split == 0.1.2.3
                         , safe == 0.3.15
                         , time == 1.6.0.1
+                        , spawn == 0.3

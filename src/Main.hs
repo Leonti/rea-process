@@ -23,16 +23,19 @@ import Parsing(extractId)
 import GeocodingCache(geocodeOrGetFromCache)
 import Poi(Stop, Store, lineToStop, lineToStore)
 import Distance(fromLocationToDistanceDoc)
+import Control.Concurrent.Spawn(pool, parMapIO)
 
 main :: IO ()
 main = do
+  _ <- putStrLn "Start processing"
+  wrap <- pool 100
   pipe <- authenticatedMongoPipe
   stops <- readStops
   stores <- readStores
   links <- uniqueOnSaleLinks pipe
-  _ <- mapM (processLink pipe stops stores) links
+  _ <- parMapIO (wrap . (processLink pipe stops stores)) links
   soldProperties <- allSoldProperties pipe
-  _ <- mapM (processSoldProperty pipe stops stores) soldProperties
+  _ <- parMapIO (wrap . (processSoldProperty pipe stops stores)) soldProperties
   putStrLn $ "Links count " ++ show (length links)
 
 processSoldProperty :: Mongo.Pipe -> [Stop] -> [Store] -> Mongo.Document -> IO ()
