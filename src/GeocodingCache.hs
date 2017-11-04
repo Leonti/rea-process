@@ -12,8 +12,14 @@ geocodeOrGetFromCache :: Mongo.Pipe -> String -> IO (Maybe Mongo.Document)
 geocodeOrGetFromCache pipe location = do
   existingResult <- geocodedForAddress pipe location
   maybeResult <- extractOrFetch pipe location existingResult
-  _ <- print $ show maybeResult
-  return maybeResult
+  _ <- print $ show (fmap coordinatesOnly maybeResult)
+  return (fmap coordinatesOnly maybeResult)
+
+coordinatesOnly :: Mongo.Document -> Mongo.Document
+coordinatesOnly doc =
+  [ copyField doc "latitude"
+  , copyField doc "longitude"
+  ]
 
 extractOrFetch :: Mongo.Pipe -> String -> [Mongo.Document] -> IO (Maybe Mongo.Document)
 extractOrFetch pipe location (x:xs) = return $ Just x

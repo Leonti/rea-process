@@ -75,7 +75,6 @@ geocodingToDistances stops stores geocodingDoc =
 toDatePrice :: Mongo.Document -> Mongo.Document
 toDatePrice doc =
   [ copyField doc "price"
-  , copyField doc "extractedDate"
   , "timestamp" =: toTimestamp (extractField "extractedDate" doc)
   ]
 
