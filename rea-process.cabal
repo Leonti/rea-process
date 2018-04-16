@@ -26,24 +26,24 @@ executable rea-process
                        , Time
 
   build-depends:       base >= 4.7 && < 5
-                        , mongoDB == 2.3.0
-                        , text == 1.2.2.1
-                        , regex-tdfa == 1.2.2
-                        , unix-time == 0.3.7
+                        , mongoDB == 2.3.0.5
+                        , text == 1.2.3.0
+                        , regex-tdfa == 1.2.3
+                        , unix-time == 0.3.8
                         , bytestring >= 0.10.8.1
-                        , aeson == 1.1.0.0
+                        , aeson == 1.3.0.0
                         , utf8-string == 1.0.1.1
-                        , http-conduit == 2.2.3.2
-                        , HTTP == 4000.3.3
-                        , connection == 0.2.6
-                        , http-client == 0.5.7.0
-                        , http-client-tls == 0.3.5.1
-                        , tls == 1.3.8
+                        , http-conduit == 2.3.0
+                        , HTTP == 4000.3.11
+                        , connection == 0.2.8
+                        , http-client == 0.5.10
+                        , http-client-tls == 0.3.5.3
+                        , tls == 1.4.1
                         , data-default-class
-                        , x509-system == 1.6.3
-                        , streaming == 0.1.4.3
+                        , x509-system == 1.6.6
+                        , streaming == 0.2.1.0
                         , gps == 1.2
-                        , split == 0.1.2.3
-                        , safe == 0.3.15
-                        , time == 1.6.0.1
+                        , split == 0.2.3.3
+                        , safe == 0.3.17
+                        , time == 1.8.0.4
                         , spawn == 0.3
