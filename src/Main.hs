@@ -1,29 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
-import DbStore(
-  uniqueOnSaleLinks,
-  onSaleForLink,
-  copyField,
-  upsertOnSaleProcessed,
-  upsertSoldProcessed,
-  extractField,
-  extractDoubleField,
-  extractIntegerField,
-  findSoldById,
-  fieldToString,
-  allSoldProperties,
-  authenticatedMongoPipe)
+import           DbStore                  (allSoldProperties,
+                                           authenticatedMongoPipe, copyField,
+                                           extractDoubleField, extractField,
+                                           extractIntegerField, fieldToString,
+                                           findSoldById, onSaleForLink,
+                                           uniqueOnSaleLinks,
+                                           upsertOnSaleProcessed,
+                                           upsertSoldProcessed)
 
 
-import Safe(headMay)
-import qualified Database.MongoDB          as Mongo
-import           Database.MongoDB          ((=:))
-import           Time(toTimestamp)
-import Data.List(sortOn)
-import Parsing(extractId)
-import GeocodingCache(geocodeOrGetFromCache)
-import Poi(Stop, Store, lineToStop, lineToStore)
-import Distance(fromLocationToDistanceDoc)
-import Control.Concurrent.Spawn(pool, parMapIO)
+import           Control.Concurrent.Spawn (parMapIO, pool)
+import           Data.List                (sortOn)
+import           Database.MongoDB         ((=:))
+import qualified Database.MongoDB         as Mongo
+import           Distance                 (fromLocationToDistanceDoc)
+import           GeocodingCache           (geocodeOrGetFromCache)
+import           Parsing                  (extractId)
+import           Poi                      (Stop, Store, lineToStop, lineToStore)
+import           Safe                     (headMay)
+import           Time                     (toTimestamp)
 
 main :: IO ()
 main = do
@@ -91,12 +86,14 @@ toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
   Mongo.merge doc (Mongo.merge geocodingDoc distancesDoc)
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
+    firstOnSale = copyField (head sortedOnSale) "extractedDate"
     copy = copyField $ last sortedOnSale
     datesPrices = fmap toDatePrice sortedOnSale
     doc =
       [ copy "link"
       , copy "extractedDate"
       , "extractedAt" =: lastExtractedAt
+      , "firstOnSale" =: firstOnSale
       , copy "bedrooms"
       , copy "bathrooms"
       , copy "cars"
