@@ -86,7 +86,7 @@ toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
   Mongo.merge doc (Mongo.merge geocodingDoc distancesDoc)
   where
     sortedOnSale = sortOn (toTimestamp . extractField "extractedDate") onSaleList
-    firstOnSale = copyField (head sortedOnSale) "extractedDate"
+    firstOnSale = Mongo.lookup "extractedDate" (head sortedOnSale) :: Maybe String
     copy = copyField $ last sortedOnSale
     datesPrices = fmap toDatePrice sortedOnSale
     doc =
