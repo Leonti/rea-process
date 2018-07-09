@@ -112,11 +112,9 @@ toOnSaleProcessedDoc onSaleList soldResult maybeGeocoding maybeDistances =
     lastExtractedAt = (toTimestamp . extractField "extractedDate") (last sortedOnSale)
 
 readStops :: IO [Stop]
-readStops = do
-    contents <- readFile "stops.csv"
-    return $ map lineToStop $ lines contents
+readStops =
+    map lineToStop . lines <$> readFile "stops.csv"
 
 readStores :: IO [Store]
-readStores = do
-    contents <- readFile "stores.csv"
-    return $ map lineToStore $ lines contents
+readStores =
+    map lineToStore . lines <$> readFile "stores.csv"
